@@ -331,6 +331,13 @@ mark.hl.has-note { border-bottom: 2px dotted #111; }
 :root[data-theme="dark"] .entry-body:not(.html-host) a { color: #8ab4f8; }
 body.ro .editor-only { display: none !important; }
 body.booting > .band, body.booting > .wrap { visibility: hidden; }
+.hmenu { position: relative; }
+#menu-btn { width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink); display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+#menu-btn svg { width: 20px; height: 20px; }
+#menu-btn[aria-expanded="true"] { background: var(--soft); border-color: var(--accent); }
+.hmenu-list { position: absolute; z-index: 60; right: 0; top: calc(100% + 8px); min-width: 150px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 24px rgba(60,50,20,0.14); padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+.hmenu-list button { border: 0; background: transparent; border-radius: 10px; padding: 10px 14px; text-align: left; font-size: 14px; white-space: nowrap; }
+.hmenu-list button:hover { background: var(--panel); }
 .title-actions { display: flex; gap: 8px; align-items: center; }
 .auth-ov { position: fixed; inset: 0; z-index: 200; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: auto; }
 .auth-box { width: min(400px, 100%); padding: 24px 22px 22px; display: flex; flex-direction: column; gap: 14px; }
@@ -350,7 +357,11 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
 <div class="band">
   <div class="wrap">
     <div class="eyebrow">SNS 콘텐츠 자동화 클럽</div>
-    <div class="title-row"><h1>클럽 노트</h1><div class="title-actions"><button class="btn ghost" id="settings" type="button" hidden>설정</button><button class="btn ghost" id="logout" type="button" hidden>로그아웃</button><button class="btn primary editor-only" id="open-add" type="button">+ 새 노트</button></div></div>
+    <div class="title-row"><h1>클럽 노트</h1><div class="title-actions"><button class="btn primary editor-only" id="open-add" type="button">+ 새 노트</button>
+      <div class="hmenu" id="hmenu" hidden>
+        <button type="button" id="menu-btn" aria-label="메뉴" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <div class="hmenu-list" id="menu-list" role="menu" hidden><button type="button" id="settings" role="menuitem">설정</button><button type="button" id="logout" role="menuitem">로그아웃</button></div>
+      </div></div></div>
   </div>
 </div>
 
@@ -1220,10 +1231,19 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     weekFilter = 'all'; kindFilter = 'all'; query = ''; tab = 'bm'; colorFilter = 'all';
     opened = {}; pClosed = {}; editingId = null; draft = null; confirmId = null; textCache = {};
     $('flt-kind').value = 'all'; $('flt-q').value = '';
-    closeAdd(); closeMemo(); closeSet(); hideTb();
+    closeAdd(); closeMemo(); closeSet(); hideTb(); closeMenu();
     var sel = window.getSelection(); if (sel) sel.removeAllRanges();
   }
-  function showAuth(on) { $('auth').hidden = !on; $('logout').hidden = on; $('settings').hidden = on; }
+  function closeMenu() { $('menu-list').hidden = true; $('menu-btn').setAttribute('aria-expanded', 'false'); }
+  $('menu-btn').addEventListener('click', function (ev) {
+    ev.stopPropagation();
+    var open = $('menu-list').hidden;
+    $('menu-list').hidden = !open; $('menu-btn').setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  $('menu-list').addEventListener('click', function (ev) { ev.stopPropagation(); closeMenu(); });
+  document.addEventListener('click', closeMenu);
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') closeMenu(); });
+  function showAuth(on) { $('auth').hidden = !on; $('hmenu').hidden = on; closeMenu(); }
   function loadEntries(userId) {
     if (loadedFor === userId) return;
     loadedFor = userId;
