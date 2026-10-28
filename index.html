@@ -316,6 +316,7 @@ mark.hl.has-note { border-bottom: 2px dotted #111; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .entry-body:not(.html-host) a { color: #8ab4f8; } :root:not([data-theme="light"]) .entry-body:not(.html-host) a:visited { color: #c3a6ff; } }
 :root[data-theme="dark"] .entry-body:not(.html-host) a { color: #8ab4f8; }
 body.ro .editor-only { display: none !important; }
+body.booting > .band, body.booting > .wrap { visibility: hidden; }
 .title-actions { display: flex; gap: 8px; align-items: center; }
 .auth-ov { position: fixed; inset: 0; z-index: 200; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: auto; }
 .auth-box { width: min(400px, 100%); padding: 24px 22px 22px; display: flex; flex-direction: column; gap: 14px; }
@@ -330,7 +331,7 @@ body.ro .editor-only { display: none !important; }
 .auth-note { font-size: 12.5px; color: var(--muted); margin: 0; line-height: 1.6; }
 </style>
 </head>
-<body>
+<body class="booting">
 
 <div class="band">
   <div class="wrap">
@@ -400,7 +401,7 @@ body.ro .editor-only { display: none !important; }
     <form id="auth-form" novalidate>
       <label class="field"><span>이메일</span><input class="in" id="a-email" type="email" autocomplete="email" required></label>
       <label class="field"><span>비밀번호 (8자 이상)</span><input class="in" id="a-pw" type="password" autocomplete="current-password" minlength="8" required></label>
-      <label class="field" id="a-weeks-wrap" hidden><span>몇 주차까지 듣나요? (나중에 설정에서 바꿀 수 있어요)</span><select class="in" id="a-weeks"><option value="1">1주차까지</option><option value="2">2주차까지</option><option value="3">3주차까지</option><option value="4">4주차까지</option><option value="5">5주차까지</option><option value="6" selected>6주차까지 (전체)</option></select></label>
+      <label class="field" id="a-weeks-wrap" hidden><span>수강 과정 (나중에 설정에서 바꿀 수 있어요)</span><select class="in" id="a-weeks"><option value="4">4주 과정</option><option value="6" selected>6주 과정</option></select></label>
       <p class="auth-err" id="auth-err" role="alert"></p>
       <button class="btn primary" id="a-go" type="submit">로그인</button>
     </form>
@@ -419,7 +420,7 @@ body.ro .editor-only { display: none !important; }
   var db = null, canWrite = true;
   var entries = [];
   var editingId = null, draft = null, confirmId = null;
-  var totalWeeks = 6;
+  var totalWeeks = 6, entriesLoaded = false;
   var tab = 'bm', colorFilter = 'all', weekFilter = 'all', kindFilter = 'all', query = '';
   var tbCtx = null, opened = {};
   var queues = {};
@@ -931,6 +932,7 @@ body.ro .editor-only { display: none !important; }
   function renderList() {
     var box = $('list'); box.textContent = '';
     var list = visible();
+    if (!entriesLoaded) { box.append(h('div', { class: 'card empty' }, h('b', { text: '노트를 불러오는 중이에요.' }))); return; }
     if (!entries.length) {
       box.append(h('div', { class: 'card empty' }, h('b', { text: '아직 저장된 노트가 없어요.' }), h('br'), '오른쪽 위 + 새 노트 버튼으로 피드백 메일이나 과제를 붙여넣어 첫 노트를 만들어봐.'));
       return;
@@ -1122,6 +1124,7 @@ body.ro .editor-only { display: none !important; }
     var m = (err && err.message || '').toLowerCase();
     if (m.indexOf('invalid login') >= 0) return '이메일이나 비밀번호가 맞지 않아요.';
     if (m.indexOf('database error') >= 0 || m.indexOf('허용되지') >= 0) return '등록되지 않은 이메일이에요. 운영자한테 이메일 등록을 요청해줘.';
+    if (m.indexOf('not confirmed') >= 0) return '이메일 인증이 아직 안 됐어요. 운영자한테 알려줘.';
     if (m.indexOf('already') >= 0) return '이미 가입된 이메일이에요. 로그인으로 들어가줘.';
     if (m.indexOf('rate') >= 0) return '잠시 뒤에 다시 시도해줘.';
     if (m.indexOf('password') >= 0) return '비밀번호는 8자 이상이어야 해요.';
@@ -1132,10 +1135,10 @@ body.ro .editor-only { display: none !important; }
     var email = $('a-email').value.trim(), pw = $('a-pw').value, err = $('auth-err');
     if (!email || pw.length < 8) { err.textContent = '이메일과 8자 이상 비밀번호를 넣어줘.'; return; }
     $('a-go').disabled = true; err.textContent = '';
-    var p = authMode === 'in' ? sb.auth.signInWithPassword({ email: email, password: pw }) : sb.auth.signUp({ email: email, password: pw, options: { data: { weeks: parseInt($('a-weeks').value, 10) || 6 } } });
+    var p = authMode === 'in' ? sb.auth.signInWithPassword({ email: email, password: pw }) : sb.auth.signUp({ email: email, password: pw, options: { data: { weeks: parseInt($('a-weeks').value, 10) === 4 ? 4 : 6 } } });
     p.then(function (res) {
       if (res.error) { err.textContent = authMsg(res.error); return; }
-      if (authMode === 'up' && !res.data.session) err.textContent = '가입은 됐지만 로그인 상태가 아니에요. 로그인으로 다시 들어가줘.';
+      if (authMode === 'up' && !res.data.session) err.textContent = '가입은 됐는데 이메일 인증이 필요한 상태예요. 운영자한테 알려줘.';
     }).catch(function (e) { err.textContent = authMsg(e); }).then(function () { $('a-go').disabled = false; });
   });
   $('logout').addEventListener('click', function () { sb.auth.signOut(); });
@@ -1147,28 +1150,29 @@ body.ro .editor-only { display: none !important; }
     loadedFor = userId;
     sb.from('entries').select('*').order('created_at', { ascending: true }).then(function (res) {
       if (res.error) { toast('노트를 읽지 못했어요.'); return; }
-      rows = res.data.map(fromRow); emit();
+      rows = res.data.map(fromRow); entriesLoaded = true; emit();
     });
   }
   function onSession(session) {
+    document.body.classList.remove('booting');
     if (session && session.user) {
       var w = parseInt(session.user.user_metadata && session.user.user_metadata.weeks, 10);
-      totalWeeks = (w >= 1 && w <= 6) ? w : 6;
+      totalWeeks = (w >= 1 && w <= 4) ? 4 : 6;
       showAuth(false); loadEntries(session.user.id); render();
     }
-    else { totalWeeks = 6; loadedFor = null; rows = []; emit(); showAuth(true); $('a-pw').value = ''; }
+    else { totalWeeks = 6; loadedFor = null; entriesLoaded = false; rows = []; emit(); showAuth(true); $('a-pw').value = ''; }
   }
 
   /* ---------- 설정 (수강 주차) ---------- */
   function closeSet() { var o = $('set-ov'); if (o) o.remove(); }
   $('settings').addEventListener('click', function () {
     closeSet(); closeMemo();
-    var sel = h('select', { class: 'in' }, [1, 2, 3, 4, 5, 6].map(function (n) { return h('option', { value: String(n), selected: n === totalWeeks }, n + '주차까지' + (n === 6 ? ' (전체)' : '')); }));
+    var sel = h('select', { class: 'in' }, [4, 6].map(function (n) { return h('option', { value: String(n), selected: n === totalWeeks }, n + '주 과정'); }));
     var err = h('p', { class: 'auth-err', text: '' });
     var ov = h('div', { class: 'memo-ov', id: 'set-ov', onmousedown: function (ev) { if (ev.target === ov) closeSet(); } },
       h('div', { class: 'memo card', role: 'dialog', 'aria-modal': 'true', 'aria-label': '설정' },
         h('div', { class: 'label', text: '설정' }),
-        h('label', { class: 'field' }, h('span', { text: '몇 주차까지 듣나요?' }), sel),
+        h('label', { class: 'field' }, h('span', { text: '수강 과정' }), sel),
         h('p', { class: 'auth-note', text: '주차 탭과 새 노트의 주차 선택이 이 범위로 보여요. 이미 쓴 노트가 더 뒤 주차에 있으면 그 주차는 계속 보여요.' }),
         err,
         h('div', { class: 'actions', style: 'margin-top:8px' },
@@ -1192,6 +1196,7 @@ body.ro .editor-only { display: none !important; }
     render();
   });
   sb.auth.onAuthStateChange(function (ev, session) { setTimeout(function () { onSession(session); }, 0); });
+  setTimeout(function () { document.body.classList.remove('booting'); }, 4000);
   sb.auth.getSession().then(function (res) { onSession(res.data && res.data.session); });
 })();
 </script>
