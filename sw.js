@@ -1,5 +1,5 @@
 /* 앱 껍데기만 캐시. 로그인, 노트 데이터(Supabase)는 절대 캐시하지 않음 */
-var CACHE = 'club-notes-v8';
+var CACHE = 'club-notes-v10';
 var SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));

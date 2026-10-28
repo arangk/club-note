@@ -269,6 +269,7 @@ mark.hl.has-note { border-bottom: 2px dotted #111; }
 .dir svg { width: 18px; height: 18px; }
 .dir.d-in { background: var(--accent); color: #111; }
 .dir.d-out { background: #111; color: #fbf9f4; }
+.dir.d-keep, .mdir.md-keep { background: var(--soft); color: var(--ink); box-shadow: inset 0 0 0 1.5px #cfc6a8; }
 .title-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .memo.wide { width: min(720px, 100%); max-height: calc(100vh - 32px); overflow: auto; }
 @media (max-width: 480px) { .rail { width: 32px; } .dir { width: 30px; height: 30px; border-radius: 10px; } .trow { gap: 8px; } }
@@ -471,16 +472,18 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
   }
   var DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>';
   var UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V9"/><path d="M7 13l5-5 5 5"/><path d="M5 4h14"/></svg>';
-  function dirOf(e) { return e.dir === 'in' || e.dir === 'out' ? e.dir : (e.kind === 'feedback' ? 'in' : 'out'); }
+  var ARCHIVE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/></svg>';
+  var DIR_ICON = { 'in': DOWN, out: UP, keep: ARCHIVE }, DIR_LABEL = { 'in': '받음', out: '보냄', keep: '보관' };
+  function dirOf(e) { return e.dir === 'in' || e.dir === 'out' || e.dir === 'keep' ? e.dir : (e.kind === 'feedback' ? 'in' : e.kind === 'note' ? 'keep' : 'out'); }
   var KIND_DOT = { feedback: '#8fb0ff', assignment: '#ff9d7d', note: '#6fd49a' };
   var KIND_ITEMS = [{ value: 'feedback', label: '피드백', dot: KIND_DOT.feedback }, { value: 'assignment', label: '과제', dot: KIND_DOT.assignment }, { value: 'note', label: '메모', dot: KIND_DOT.note }];
   var KIND_ITEMS_ALL = [{ value: 'all', label: '종류' }].concat(KIND_ITEMS);
-  var DIR_ITEMS = [{ value: 'in', label: '받음', dir: 'in' }, { value: 'out', label: '보냄', dir: 'out' }];
+  var DIR_ITEMS = [{ value: 'in', label: '받음', dir: 'in' }, { value: 'out', label: '보냄', dir: 'out' }, { value: 'keep', label: '보관', dir: 'keep' }];
   var openSel = null;
   var CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
   function selMark(it) {
     if (it.dot) return h('span', { class: 'cdot', style: 'background:' + it.dot });
-    if (it.dir) { var m = h('span', { class: 'mdir md-' + it.dir }); m.innerHTML = it.dir === 'in' ? DOWN : UP; return m; }
+    if (it.dir) { var m = h('span', { class: 'mdir md-' + it.dir }); m.innerHTML = DIR_ICON[it.dir]; return m; }
     return null;
   }
   function makeSelect(items, value, label, id) {
@@ -966,8 +969,8 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
       var rows = h('div', { class: 'trows' });
       list.filter(function (e) { return e.week === w; }).forEach(function (e) {
         var d = dirOf(e);
-        var ic = h('span', { class: 'dir d-' + d, role: 'img', 'aria-label': d === 'in' ? '받음' : '보냄' });
-        ic.innerHTML = d === 'in' ? DOWN : UP;
+        var ic = h('span', { class: 'dir d-' + d, role: 'img', 'aria-label': DIR_LABEL[d] });
+        ic.innerHTML = DIR_ICON[d];
         rows.append(h('div', { class: 'trow' }, h('div', { class: 'rail' }, ic, h('span', { class: 'line' })), entryCard(e)));
       });
       g.append(rows);
@@ -1081,10 +1084,17 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
   $('tab-bm').addEventListener('click', function () { tab = 'bm'; renderPanel(); });
   $('tab-hl').addEventListener('click', function () { tab = 'hl'; renderPanel(); });
   $('open-add').addEventListener('click', function () { fillWeekSelect(); $('add-ov').hidden = false; $('f-title').focus(); });
-  $('add-cancel').addEventListener('click', function () { $('add-ov').hidden = true; });
-  $('add-ov').addEventListener('mousedown', function (ev) { if (ev.target === $('add-ov')) $('add-ov').hidden = true; });
-  $('f-kind').addEventListener('change', function (ev) { $('f-dir').value = ev.target.value === 'feedback' ? 'in' : 'out'; });
-  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') $('add-ov').hidden = true; });
+  function resetAddForm() {
+    var box = $('f-body');
+    $('f-title').value = ''; box.innerHTML = ''; box.removeAttribute('data-rich');
+    $('f-week').value = '1'; fillWeekSelect();
+    $('f-kind').value = 'feedback'; $('f-dir').value = 'in';
+  }
+  function closeAdd() { $('add-ov').hidden = true; resetAddForm(); }
+  $('add-cancel').addEventListener('click', closeAdd);
+  $('add-ov').addEventListener('mousedown', function (ev) { if (ev.target === $('add-ov')) closeAdd(); });
+  $('f-kind').addEventListener('change', function (ev) { $('f-dir').value = ev.target.value === 'feedback' ? 'in' : ev.target.value === 'note' ? 'keep' : 'out'; });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !$('add-ov').hidden) closeAdd(); });
   (function () {
     var box = $('f-body');
     box.addEventListener('paste', function (ev) {
@@ -1119,7 +1129,7 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     } else rec.body = (box.innerText || '').replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
     if (!(week >= 1) || !title || !rec.body) { toast('주차, 제목, 내용을 확인해 주세요.'); return; }
     db.collection('entries').add(rec)
-      .then(function () { $('f-title').value = ''; box.innerHTML = ''; box.removeAttribute('data-rich'); $('add-ov').hidden = true; toast('저장했어요.'); })
+      .then(function () { closeAdd(); toast('저장했어요.'); })
       .catch(function () { toast('저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'); });
   });
 
@@ -1205,6 +1215,13 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
   $('logout').addEventListener('click', function () { sb.auth.signOut(); });
 
   var loadedFor = null;
+  function resetUI() {
+    weekFilter = 'all'; kindFilter = 'all'; query = ''; tab = 'bm'; colorFilter = 'all';
+    opened = {}; pClosed = {}; editingId = null; draft = null; confirmId = null; textCache = {};
+    $('flt-kind').value = 'all'; $('flt-q').value = '';
+    closeAdd(); closeMemo(); closeSet(); hideTb();
+    var sel = window.getSelection(); if (sel) sel.removeAllRanges();
+  }
   function showAuth(on) { $('auth').hidden = !on; $('logout').hidden = on; $('settings').hidden = on; }
   function loadEntries(userId) {
     if (loadedFor === userId) return;
@@ -1219,9 +1236,13 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     if (session && session.user) {
       var w = parseInt(session.user.user_metadata && session.user.user_metadata.weeks, 10);
       totalWeeks = (w >= 1 && w <= 4) ? 4 : 6;
+      if (loadedFor && loadedFor !== session.user.id) resetUI();
       showAuth(false); loadEntries(session.user.id); render();
     }
-    else { totalWeeks = 6; loadedFor = null; entriesLoaded = false; rows = []; emit(); showAuth(true); $('a-pw').value = ''; }
+    else {
+      totalWeeks = 6; loadedFor = null; entriesLoaded = false; rows = []; resetUI(); emit(); showAuth(true);
+      $('a-email').value = ''; $('a-pw').value = ''; $('auth-err').textContent = ''; setMode('in');
+    }
   }
 
   /* ---------- 설정 (수강 주차) ---------- */
