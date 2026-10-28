@@ -510,7 +510,7 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
 
   function enqueue(id, fn) {
     var prev = queues[id] || Promise.resolve();
-    var p = prev.then(fn).catch(function () { toast('저장하지 못했어요. 잠시 뒤 다시 해봐.'); });
+    var p = prev.then(fn).catch(function () { toast('저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'); });
     queues[id] = p; return p;
   }
   function updateEntry(id, data) {
@@ -666,7 +666,7 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     var t = fullText(e).slice(ctx.s, ctx.e).replace(/\s+/g, ' ').trim(); var quote = t.length > 90 ? t.slice(0, 90) + '…' : t;
     var inp = h('input', { class: 'in', type: 'url', inputmode: 'url', maxlength: '1000', placeholder: 'https://', autocapitalize: 'off', autocomplete: 'off', spellcheck: 'false' });
     inp.value = cur;
-    var err = h('div', { class: 'link-err', hidden: true, text: 'http:// 또는 https:// 로 시작하는 주소를 넣어줘' });
+    var err = h('div', { class: 'link-err', hidden: true, text: 'http:// 또는 https:// 로 시작하는 주소를 넣어 주세요' });
     function save() {
       var u = normUrl(inp.value);
       if (u === null) { err.hidden = false; inp.focus(); return; }
@@ -798,7 +798,7 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     } else if (ctx.kind === 'new') {
       var t = fullText(e).slice(ctx.s, ctx.e).replace(/\s+/g, ' ').trim(); quote = t.length > 90 ? t.slice(0, 90) + '…' : t;
     } else { cur = e.bmNote || ''; quote = ctxLabel(e); label = '책갈피 메모'; }
-    var ta = h('textarea', { class: 'in', style: 'min-height:120px', maxlength: '2000', placeholder: '여기에 메모를 적어줘' });
+    var ta = h('textarea', { class: 'in', style: 'min-height:120px', maxlength: '2000', placeholder: '여기에 메모를 적어 주세요' });
     ta.value = cur;
     function save(val) {
       val = val.trim();
@@ -920,7 +920,7 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
         h('div', { class: 'actions' },
           h('button', { class: 'btn primary', type: 'button', text: '저장', onclick: function () {
             var title = draft.title.trim(), week = parseInt(draft.week, 10);
-            if (!title || (!e.html && !draft.body.trim()) || !(week >= 1)) { toast('주차, 제목, 내용을 확인해줘.'); return; }
+            if (!title || (!e.html && !draft.body.trim()) || !(week >= 1)) { toast('주차, 제목, 내용을 확인해 주세요.'); return; }
             var data = { week: week, kind: draft.kind, dir: draft.dir, title: title };
             if (!e.html) { data.body = draft.body; if (draft.body !== (e.body || '')) data.highlights = []; data.links = []; }
             var id = e.id; editingId = null; draft = null;
@@ -934,10 +934,10 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     var list = visible();
     if (!entriesLoaded) { box.append(h('div', { class: 'card empty' }, h('b', { text: '노트를 불러오는 중이에요.' }))); return; }
     if (!entries.length) {
-      box.append(h('div', { class: 'card empty' }, h('b', { text: '아직 저장된 노트가 없어요.' }), h('br'), '오른쪽 위 + 새 노트 버튼으로 피드백 메일이나 과제를 붙여넣어 첫 노트를 만들어봐.'));
+      box.append(h('div', { class: 'card empty' }, h('b', { text: '아직 저장된 노트가 없어요.' }), h('br'), '오른쪽 위 + 새 노트 버튼으로 피드백 메일이나 과제를 붙여넣어 첫 노트를 만들어 보세요.'));
       return;
     }
-    if (!list.length) { box.append(h('div', { class: 'card empty' }, '조건에 맞는 노트가 없어요. 걸러보기를 바꿔봐.')); return; }
+    if (!list.length) { box.append(h('div', { class: 'card empty' }, '조건에 맞는 노트가 없어요. 걸러보기를 바꿔 보세요.')); return; }
     var weeks = [];
     list.forEach(function (e) { if (weeks.indexOf(e.week) < 0) weeks.push(e.week); });
     weeks.sort(function (a, b) { return a - b; });
@@ -1003,7 +1003,7 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     }
     if (!rows.length) {
       p.append(h('div', { class: 'empty' }, tab === 'bm'
-        ? h('span', null, h('b', { text: '책갈피가 아직 없어요.' }), h('br'), '노트의 책갈피 버튼이나, 글을 드래그하고 별 표시를 눌러봐.')
+        ? h('span', null, h('b', { text: '책갈피가 아직 없어요.' }), h('br'), '노트의 책갈피 버튼이나, 글을 드래그하고 별 표시를 눌러 보세요.')
         : (hlRows.length ? '이 색의 하이라이트는 없어요.' : h('span', null, h('b', { text: '하이라이트가 아직 없어요.' }), h('br'), '노트의 글을 드래그하면 색을 고를 수 있어요.'))));
       return;
     }
@@ -1056,10 +1056,10 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     ev.preventDefault();
     if (!writable()) return;
     var week = parseInt($('f-week').value, 10), title = $('f-title').value.trim(), body = $('f-body').value;
-    if (!(week >= 1) || !title || !body.trim()) { toast('주차, 제목, 내용을 확인해줘.'); return; }
+    if (!(week >= 1) || !title || !body.trim()) { toast('주차, 제목, 내용을 확인해 주세요.'); return; }
     db.collection('entries').add({ week: week, kind: $('f-kind').value, dir: $('f-dir').value, title: title, body: body, createdAt: Date.now(), bookmarked: false, highlights: [] })
       .then(function () { $('f-title').value = ''; $('f-body').value = ''; $('add-ov').hidden = true; toast('저장했어요.'); })
-      .catch(function () { toast('저장하지 못했어요. 잠시 뒤 다시 해봐.'); });
+      .catch(function () { toast('저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'); });
   });
 
   /* ---------- Supabase 연결 ---------- */
@@ -1123,22 +1123,22 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
   function authMsg(err) {
     var m = (err && err.message || '').toLowerCase();
     if (m.indexOf('invalid login') >= 0) return '이메일이나 비밀번호가 맞지 않아요.';
-    if (m.indexOf('database error') >= 0 || m.indexOf('허용되지') >= 0) return '등록되지 않은 이메일이에요. 운영자한테 이메일 등록을 요청해줘.';
-    if (m.indexOf('not confirmed') >= 0) return '이메일 인증이 아직 안 됐어요. 운영자한테 알려줘.';
-    if (m.indexOf('already') >= 0) return '이미 가입된 이메일이에요. 로그인으로 들어가줘.';
-    if (m.indexOf('rate') >= 0) return '잠시 뒤에 다시 시도해줘.';
+    if (m.indexOf('database error') >= 0 || m.indexOf('허용되지') >= 0) return '등록되지 않은 이메일이에요. 운영자에게 이메일 등록을 요청해 주세요.';
+    if (m.indexOf('not confirmed') >= 0) return '이메일 인증이 아직 안 됐어요. 운영자에게 알려 주세요.';
+    if (m.indexOf('already') >= 0) return '이미 가입된 이메일이에요. 로그인으로 들어가 주세요.';
+    if (m.indexOf('rate') >= 0) return '잠시 뒤에 다시 시도해 주세요.';
     if (m.indexOf('password') >= 0) return '비밀번호는 8자 이상이어야 해요.';
-    return '처리하지 못했어요. 잠시 뒤 다시 해봐.';
+    return '처리하지 못했어요. 잠시 뒤 다시 시도해 주세요.';
   }
   $('auth-form').addEventListener('submit', function (ev) {
     ev.preventDefault();
     var email = $('a-email').value.trim(), pw = $('a-pw').value, err = $('auth-err');
-    if (!email || pw.length < 8) { err.textContent = '이메일과 8자 이상 비밀번호를 넣어줘.'; return; }
+    if (!email || pw.length < 8) { err.textContent = '이메일과 8자 이상 비밀번호를 넣어 주세요.'; return; }
     $('a-go').disabled = true; err.textContent = '';
     var p = authMode === 'in' ? sb.auth.signInWithPassword({ email: email, password: pw }) : sb.auth.signUp({ email: email, password: pw, options: { data: { weeks: parseInt($('a-weeks').value, 10) === 4 ? 4 : 6 } } });
     p.then(function (res) {
       if (res.error) { err.textContent = authMsg(res.error); return; }
-      if (authMode === 'up' && !res.data.session) err.textContent = '가입은 됐는데 이메일 인증이 필요한 상태예요. 운영자한테 알려줘.';
+      if (authMode === 'up' && !res.data.session) err.textContent = '가입은 됐는데 이메일 인증이 필요한 상태예요. 운영자에게 알려 주세요.';
     }).catch(function (e) { err.textContent = authMsg(e); }).then(function () { $('a-go').disabled = false; });
   });
   $('logout').addEventListener('click', function () { sb.auth.signOut(); });
@@ -1179,9 +1179,9 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
           h('button', { class: 'btn primary', type: 'button', text: '저장', onclick: function () {
             var n = parseInt(sel.value, 10);
             sb.auth.updateUser({ data: { weeks: n } }).then(function (res) {
-              if (res.error) { err.textContent = '저장하지 못했어요. 잠시 뒤 다시 해봐.'; return; }
+              if (res.error) { err.textContent = '저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'; return; }
               totalWeeks = n; closeSet(); render(); toast('저장했어요.');
-            }).catch(function () { err.textContent = '저장하지 못했어요. 잠시 뒤 다시 해봐.'; });
+            }).catch(function () { err.textContent = '저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'; });
           } }),
           h('button', { class: 'btn ghost', type: 'button', text: '취소', onclick: closeSet }))));
     document.body.append(ov);
