@@ -1,0 +1,18 @@
+/* 앱 껍데기만 캐시. 로그인, 노트 데이터(Supabase)는 절대 캐시하지 않음 */
+var CACHE = 'club-notes-v2';
+var SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+self.addEventListener('install', function (e) {
+  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));
+});
+self.addEventListener('activate', function (e) {
+  e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); })); }).then(function () { return self.clients.claim(); }));
+});
+self.addEventListener('fetch', function (e) {
+  var req = e.request, url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== location.origin) return; /* Supabase, CDN, 폰트는 그대로 네트워크 */
+  e.respondWith(
+    fetch(req).then(function (res) {
+      var copy = res.clone(); caches.open(CACHE).then(function (c) { c.put(req, copy); }); return res;
+    }).catch(function () { return caches.match(req).then(function (r) { return r || caches.match('index.html'); }); })
+  );
+});
