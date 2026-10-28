@@ -238,6 +238,12 @@ mark.hl.bm { box-shadow: inset 0 -2px 0 #111; }
 .a-qaline { font-size: 15px; line-height: 1.85; color: #000; overflow-wrap: anywhere; }
 @media (max-width: 480px) { .a-sheet h1 { font-size: 27px; } .a-strip { padding: 12px 20px; } .a-head { padding: 34px 20px 30px; } .a-sec { padding: 12px 20px; } .a-body { padding: 22px 20px 32px; } .a-panel { padding: 16px 14px; } }
 mark.hl.has-note { border-bottom: 2px dotted #111; }
+.memo-strip { border-top: 1px solid var(--line); padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); }
+.memo-strip .ms-h { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .02em; }
+.ms-item { display: flex; gap: 10px; align-items: stretch; width: 100%; text-align: left; border: 0; background: transparent; padding: 2px 0; cursor: pointer; }
+.ms-item .bar { width: 4px; border-radius: 3px; flex: none; }
+.ms-item .ms-q { display: block; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.ms-item .ms-n { display: block; margin-top: 3px; padding: 6px 10px; background: var(--soft); border-radius: 10px; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .pnote { margin-top: 4px; padding: 6px 10px; background: var(--soft); border-radius: 10px; font-size: 13px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
 .item .jump { grid-row: span 2; grid-column: 1; }
@@ -908,6 +914,7 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
       var bar = h('div', { class: 'acc-actions' }, actions);
       var bd = buildBody(e); bd.id = 'b-' + e.id;
       art.append(bar, bd);
+      var ms = memoStrip(e); if (ms) art.append(ms);
     }
     return art;
   }
@@ -987,6 +994,18 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     var t = fullText(e).slice(x.s, x.e).replace(/\s+/g, ' ').trim();
     return t.length > 90 ? t.slice(0, 90) + '…' : t;
   }
+  function memoStrip(e) {
+    var items = sortedHl(e).filter(function (x) { return x.note; });
+    if (!items.length && !e.bmNote) return null;
+    var box = h('div', { class: 'memo-strip' }, h('div', { class: 'ms-h', text: '메모' }));
+    if (e.bmNote) box.append(h('div', { class: 'ms-item' }, h('span', { class: 'bar', style: 'background:' + (KBAR[e.kind] || KBAR.note) }), h('span', { style: 'min-width:0;flex:1' }, h('span', { class: 'ms-q', text: '책갈피' }), h('span', { class: 'ms-n', text: e.bmNote }))));
+    items.forEach(function (x) {
+      box.append(h('button', { class: 'ms-item', type: 'button', onclick: function () { flash(document.querySelector('mark[data-hid="' + x.id + '"]')); } },
+        h('span', { class: 'bar fc-' + (COLORS[x.c] ? x.c : 'y') }),
+        h('span', { style: 'min-width:0;flex:1' }, h('span', { class: 'ms-q', text: snippet(e, x) }), h('span', { class: 'ms-n', text: x.note }))));
+    });
+    return box;
+  }
   function ctxLabel(e) { return e.week + '주차 · ' + (KINDS[e.kind] || '메모') + ' · ' + (e.title || ''); }
   var pClosed = {};
   var KBAR = { feedback: '#8fb0ff', assignment: '#ff9d7d', note: '#6fd49a' };
@@ -1036,7 +1055,7 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
         var li = h('li', { class: 'item2' },
           h('button', { class: 'jump2', type: 'button', onclick: function () { jump(o.e.id, o.entry ? undefined : o.x.id); } },
             h('span', barAttrs),
-            h('span', { class: 'txt' }, h('span', { class: 'snip', text: o.text }), h('span', { class: 'ctx', text: o.meta }), o.note ? h('span', { class: 'pnote', text: '메모: ' + o.note }) : null)));
+            h('span', { class: 'txt' }, h('span', { class: 'snip', text: o.text }), h('span', { class: 'ctx', text: o.meta }), o.note ? h('span', { class: 'pnote', text: o.note }) : null)));
         if (writable()) {
           li.append(h('button', { class: 'rm', type: 'button', text: o.note ? '메모 수정' : '메모', onclick: function () { openMemo(o.entry ? { kind: 'entry', eid: o.e.id } : { kind: 'hl', eid: o.e.id, hid: o.x.id }); } }));
           if (tab === 'hl') li.append(h('button', { class: 'rm', type: 'button', text: '해제', 'aria-label': '이 하이라이트 해제', onclick: function () { removeHighlight(o.e.id, o.x.id); } }));
