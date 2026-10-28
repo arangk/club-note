@@ -123,6 +123,10 @@ textarea.in { min-height: 150px; resize: vertical; line-height: 1.75; }
 .entry-body { padding: 10px 18px 20px; font-size: 15.5px; line-height: 1.95; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .entry-form { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; }
 .note { font-size: 13px; color: var(--muted); margin: 0; }
+.in.rich { min-height: 260px; max-height: 55vh; overflow: auto; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; outline-offset: 0; }
+.in.rich:empty::before { content: attr(data-ph); color: var(--muted); opacity: .7; }
+.in.rich table { max-width: 100%; }
+.img-omit { color: #8a8576; font-size: 12px; font-style: italic; }
 
 mark.hl { color: inherit; padding: 1px 0; cursor: pointer; border-radius: 2px; }
 mark.hl-y { background: var(--hl-y); }
@@ -293,7 +297,9 @@ mark.hl.has-note { border-bottom: 2px dotted #111; }
 .csel { position: relative; }
 .csel-btn { display: flex; align-items: center; gap: 8px; text-align: left; width: 100%; cursor: pointer; }
 .csel-t { flex: 1; min-width: 0; }
-.csel-c { font-size: 11px; color: var(--muted); }
+.csel-c { flex: none; width: 18px; height: 18px; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; }
+.csel-c svg { width: 18px; height: 18px; }
+.card.memo, .auth-box.card { overflow: visible; }
 .csel-list { position: absolute; z-index: 20; left: 0; top: calc(100% + 6px); min-width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 24px rgba(60,50,20,0.14); padding: 6px; display: flex; flex-direction: column; gap: 2px; }
 .csel-o { display: flex; align-items: center; gap: 8px; border: 0; background: transparent; border-radius: 10px; padding: 8px 12px; text-align: left; white-space: nowrap; font-size: 14px; }
 .csel-o:hover, .csel-o[aria-selected="true"] { background: var(--panel); }
@@ -370,12 +376,13 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     <div class="label" id="add-title">새 노트 추가</div>
     <form id="add-form" class="entry-form" style="padding: 12px 0 0" autocomplete="off">
       <div class="row">
-        <label class="field" style="flex: 0 1 120px"><span>주차</span><select class="in" id="f-week"></select></label>
+        <div class="field" style="flex: 0 1 130px"><span>주차</span><div id="f-week"></div></div>
         <div class="field" style="flex: 0 1 170px"><span>종류</span><div id="f-kind"></div></div>
         <div class="field" style="flex: 0 1 130px"><span>구분</span><div id="f-dir"></div></div>
         <label class="field grow"><span>제목</span><input class="in" id="f-title" type="text" maxlength="120" required placeholder="예: 1주차 1:1 피드백 메일"></label>
       </div>
-      <label class="field"><span>내용 (메일이나 강의 내용을 그대로 붙여넣어도 돼요)</span><textarea class="in" id="f-body" required></textarea></label>
+      <div class="field"><span>내용 (메일을 복사해서 붙여넣으면 서식이 그대로 유지돼요)</span><div class="in rich" id="f-body" contenteditable="true" role="textbox" aria-multiline="true" aria-label="내용" data-ph="여기에 글을 쓰거나 메일 내용을 붙여넣어 주세요"></div>
+        <p class="note" id="f-note">메일 속 이미지는 저장되지 않고 글과 서식만 저장돼요.</p></div>
       <div class="actions"><button class="btn primary" type="submit">저장</button><button class="btn ghost" type="button" id="add-cancel">취소</button></div>
     </form>
   </div>
@@ -401,7 +408,7 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     <form id="auth-form" novalidate>
       <label class="field"><span>이메일</span><input class="in" id="a-email" type="email" autocomplete="email" required></label>
       <label class="field"><span>비밀번호 (8자 이상)</span><input class="in" id="a-pw" type="password" autocomplete="current-password" minlength="8" required></label>
-      <label class="field" id="a-weeks-wrap" hidden><span>수강 과정 (나중에 설정에서 바꿀 수 있어요)</span><select class="in" id="a-weeks"><option value="4">4주 과정</option><option value="6" selected>6주 과정</option></select></label>
+      <div class="field" id="a-weeks-wrap" hidden><span>수강 과정 (나중에 설정에서 바꿀 수 있어요)</span><div id="a-weeks"></div></div>
       <p class="auth-err" id="auth-err" role="alert"></p>
       <button class="btn primary" id="a-go" type="submit">로그인</button>
     </form>
@@ -464,6 +471,7 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
   var KIND_ITEMS_ALL = [{ value: 'all', label: '종류' }].concat(KIND_ITEMS);
   var DIR_ITEMS = [{ value: 'in', label: '받음', dir: 'in' }, { value: 'out', label: '보냄', dir: 'out' }];
   var openSel = null;
+  var CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
   function selMark(it) {
     if (it.dot) return h('span', { class: 'cdot', style: 'background:' + it.dot });
     if (it.dir) { var m = h('span', { class: 'mdir md-' + it.dir }); m.innerHTML = it.dir === 'in' ? DOWN : UP; return m; }
@@ -480,7 +488,7 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     function paint() {
       var it = find(cur); btn.textContent = '';
       var mk = selMark(it); if (mk) btn.append(mk);
-      btn.append(h('span', { class: 'csel-t', text: it.label }), h('span', { class: 'csel-c', 'aria-hidden': 'true', text: '▾' }));
+      var cv = h('span', { class: 'csel-c', 'aria-hidden': 'true' }); cv.innerHTML = CHEV; btn.append(h('span', { class: 'csel-t', text: it.label }), cv);
     }
     function close() { list.hidden = true; btn.setAttribute('aria-expanded', 'false'); if (openSel === close) openSel = null; }
     function choose(v) {
@@ -539,6 +547,11 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
       if (n.nodeType === 3) { dst.append(document.createTextNode(n.nodeValue)); return; }
       if (n.nodeType !== 1) return;
       if (n.tagName === 'SCRIPT' || n.tagName === 'STYLE') return;
+      if (n.tagName === 'IMG') {
+        var iw = parseInt(n.getAttribute('width'), 10), ih = parseInt(n.getAttribute('height'), 10);
+        if ((iw >= 0 && iw <= 3) || (ih >= 0 && ih <= 3)) return;
+        var om = document.createElement('span'); om.className = 'img-omit'; om.textContent = '[이미지는 저장되지 않아요]'; dst.append(om); return;
+      }
       if (n.tagName === 'A') {
         var href = n.getAttribute('href') || '';
         if (/^https?:\/\//i.test(href)) {
@@ -899,8 +912,7 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     return art;
   }
   function editCard(e) {
-    var wk = h('select', { class: 'in', onchange: function (ev) { draft.week = ev.target.value; } },
-      Array.apply(null, Array(weekMax())).map(function (_, i) { var n = i + 1; return h('option', { value: String(n), selected: Number(draft.week) === n }, n + '주차'); }));
+    var wk = makeSelect(weekItems(), String(draft.week), '주차'); wk.addEventListener('change', function () { draft.week = wk.value; });
     var kd = makeSelect(KIND_ITEMS, draft.kind, '종류'); kd.addEventListener('change', function () { draft.kind = kd.value; });
     var dd = makeSelect(DIR_ITEMS, draft.dir, '구분'); dd.addEventListener('change', function () { draft.dir = dd.value; });
     var tt = h('input', { class: 'in', type: 'text', maxlength: '120', value: draft.title, oninput: function (ev) { draft.title = ev.target.value; } });
@@ -911,7 +923,7 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     return h('article', { class: 'entry', id: 'e-' + e.id },
       h('div', { class: 'entry-form' },
         h('div', { class: 'row' },
-          h('label', { class: 'field', style: 'flex:0 1 110px' }, h('span', { text: '주차' }), wk),
+          h('div', { class: 'field', style: 'flex:0 1 130px' }, h('span', { text: '주차' }), wk),
           h('div', { class: 'field', style: 'flex:0 1 190px' }, h('span', { text: '종류' }), kd),
           h('div', { class: 'field', style: 'flex:0 1 130px' }, h('span', { text: '구분' }), dd),
           h('label', { class: 'field grow' }, h('span', { text: '제목' }), tt)),
@@ -956,10 +968,11 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
     });
   }
   function weekMax() { var m = totalWeeks; entries.forEach(function (e) { if (e.week > m) m = e.week; }); return Math.min(m, 6); }
+  function weekItems() { var a = []; for (var n = 1; n <= weekMax(); n++) a.push({ value: String(n), label: n + '주차' }); return a; }
   function fillWeekSelect() {
-    var sel = $('f-week'), cur = sel.value; sel.textContent = '';
-    for (var n = 1; n <= weekMax(); n++) sel.append(h('option', { value: String(n) }, n + '주차'));
-    if (cur && Number(cur) <= weekMax()) sel.value = cur;
+    var old = $('f-week'), cur = old.value || '1';
+    if (Number(cur) > weekMax()) cur = '1';
+    old.replaceWith(makeSelect(weekItems(), cur, '주차', 'f-week'));
   }
   function renderFilters() {
     var box = $('wtabs'); box.textContent = '';
@@ -1041,6 +1054,7 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
 
   /* ---------- 입력 ---------- */
   mountSelect('flt-kind', KIND_ITEMS_ALL, 'all', '종류');
+  mountSelect('a-weeks', [{ value: '4', label: '4주 과정' }, { value: '6', label: '6주 과정' }], '6', '수강 과정');
   mountSelect('f-kind', KIND_ITEMS, 'feedback', '종류');
   mountSelect('f-dir', DIR_ITEMS, 'in', '구분');
   $('flt-kind').addEventListener('change', function (ev) { kindFilter = ev.target.value; renderList(); });
@@ -1052,13 +1066,41 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
   $('add-ov').addEventListener('mousedown', function (ev) { if (ev.target === $('add-ov')) $('add-ov').hidden = true; });
   $('f-kind').addEventListener('change', function (ev) { $('f-dir').value = ev.target.value === 'feedback' ? 'in' : 'out'; });
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') $('add-ov').hidden = true; });
+  (function () {
+    var box = $('f-body');
+    box.addEventListener('paste', function (ev) {
+      var cd = ev.clipboardData; if (!cd) return;
+      ev.preventDefault();
+      var html = cd.getData('text/html'), text = cd.getData('text/plain');
+      if (html) {
+        var tmp = document.createElement('div');
+        cleanInto(new DOMParser().parseFromString(html, 'text/html').body, tmp);
+        if (tmp.textContent.trim() || tmp.querySelector('table')) {
+          if (!box.textContent.trim() && box.getAttribute('data-rich') !== '1') box.innerHTML = tmp.innerHTML;
+          else document.execCommand('insertHTML', false, tmp.innerHTML);
+          box.setAttribute('data-rich', '1');
+          return;
+        }
+      }
+      document.execCommand('insertText', false, text);
+    });
+    box.addEventListener('input', function () {
+      if (!box.textContent.trim() && !box.querySelector('table')) { box.innerHTML = ''; box.removeAttribute('data-rich'); }
+    });
+  })();
   $('add-form').addEventListener('submit', function (ev) {
     ev.preventDefault();
     if (!writable()) return;
-    var week = parseInt($('f-week').value, 10), title = $('f-title').value.trim(), body = $('f-body').value;
-    if (!(week >= 1) || !title || !body.trim()) { toast('주차, 제목, 내용을 확인해 주세요.'); return; }
-    db.collection('entries').add({ week: week, kind: $('f-kind').value, dir: $('f-dir').value, title: title, body: body, createdAt: Date.now(), bookmarked: false, highlights: [] })
-      .then(function () { $('f-title').value = ''; $('f-body').value = ''; $('add-ov').hidden = true; toast('저장했어요.'); })
+    var week = parseInt($('f-week').value, 10), title = $('f-title').value.trim(), box = $('f-body');
+    var rec = { week: week, kind: $('f-kind').value, dir: $('f-dir').value, title: title, createdAt: Date.now(), bookmarked: false, highlights: [] };
+    if (box.getAttribute('data-rich') === '1') {
+      var tmp = document.createElement('div'); cleanInto(box, tmp);
+      rec.body = tmp.textContent.trim(); rec.html = tmp.innerHTML; rec.skin = 'raw';
+      if (rec.html.length > 450000) { toast('내용이 너무 길어요. 나눠서 저장해 주세요.'); return; }
+    } else rec.body = (box.innerText || '').replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+    if (!(week >= 1) || !title || !rec.body) { toast('주차, 제목, 내용을 확인해 주세요.'); return; }
+    db.collection('entries').add(rec)
+      .then(function () { $('f-title').value = ''; box.innerHTML = ''; box.removeAttribute('data-rich'); $('add-ov').hidden = true; toast('저장했어요.'); })
       .catch(function () { toast('저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'); });
   });
 
@@ -1167,12 +1209,12 @@ body.booting > .band, body.booting > .wrap { visibility: hidden; }
   function closeSet() { var o = $('set-ov'); if (o) o.remove(); }
   $('settings').addEventListener('click', function () {
     closeSet(); closeMemo();
-    var sel = h('select', { class: 'in' }, [4, 6].map(function (n) { return h('option', { value: String(n), selected: n === totalWeeks }, n + '주 과정'); }));
+    var sel = makeSelect([{ value: '4', label: '4주 과정' }, { value: '6', label: '6주 과정' }], String(totalWeeks), '수강 과정');
     var err = h('p', { class: 'auth-err', text: '' });
     var ov = h('div', { class: 'memo-ov', id: 'set-ov', onmousedown: function (ev) { if (ev.target === ov) closeSet(); } },
       h('div', { class: 'memo card', role: 'dialog', 'aria-modal': 'true', 'aria-label': '설정' },
         h('div', { class: 'label', text: '설정' }),
-        h('label', { class: 'field' }, h('span', { text: '수강 과정' }), sel),
+        h('div', { class: 'field' }, h('span', { text: '수강 과정' }), sel),
         h('p', { class: 'auth-note', text: '주차 탭과 새 노트의 주차 선택이 이 범위로 보여요. 이미 쓴 노트가 더 뒤 주차에 있으면 그 주차는 계속 보여요.' }),
         err,
         h('div', { class: 'actions', style: 'margin-top:8px' },
